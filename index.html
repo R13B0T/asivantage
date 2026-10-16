@@ -1876,7 +1876,6 @@ function exportPdf(r, meta, save){
    VANTAGE — ASI Solutions event totem  |  v26  (cards match the printed 9x12cm production deck)
    ========================================================================= */
 const MODEL = 'claude-sonnet-5-5';
-const DEFAULT_KEY = ;
 const KEY_STORE='vantage_api_key', LOG_STORE='vantage_sessions', CFG_STORE='vantage_cfg';
 
 const PILLARS = [
@@ -2562,7 +2561,7 @@ function coveredText(sel){
 
 async function requestReport(){
   const myGen=genId;
-  const key=(DEFAULT_KEY||localStorage.getItem(KEY_STORE)||'').trim();
+  const key=(localStorage.getItem(KEY_STORE)||'').trim();
   if(!key){ reportErr='No API key set on this device.'; return; }
   apiPending=true;
   /* Decided here, not after the response, because the model needs to know which
