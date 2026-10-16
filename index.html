@@ -1088,8 +1088,8 @@ body[data-orient="portrait"] #demo .d-rot{display:flex}
   <div class="sheet">
     <h3>Vantage settings <span style="font-family:var(--font-feature);font-weight:800;letter-spacing:.14em;font-size:.5em;opacity:.55;vertical-align:middle">COMBINED V1</span></h3>
     <p class="hint">Facilitator only. Nothing here is visible during a session.</p>
-    <label for="apiKey">Claude API key</label>
-    <input id="apiKey" type="password" placeholder="sk-ant-...">
+    <label for="apiKey">Access code</label>
+    <input id="apiKey" type="password" placeholder="Enter access code for this session" autocomplete="off">
     <label for="sectorSel">Audience</label>
     <select id="sectorSel">
       <option value="edu">Education (schools)</option>
@@ -1887,6 +1887,8 @@ function exportPdf(r, meta, save){
    Built on totem v26 (production card face). Audience is chosen in Settings.
    ========================================================================= */
 const MODEL = 'claude-sonnet-5-5';
+/* Set to the deployed Worker URL, e.g. https://vantage-proxy.<account>.workers.dev (see proxy/README.md) */
+const PROXY_URL='';
 const KEY_STORE='vantage_api_key', LOG_STORE='vantage_sessions', CFG_STORE='vantage_cfg';
 
 const PILLARS = [
@@ -2887,8 +2889,9 @@ function coveredText(sel){
 
 async function requestReport(){
   const myGen=genId;
-  const key=(localStorage.getItem(KEY_STORE)||'').trim();
-  if(!key){ reportErr='No API key set on this device.'; return; }
+  const key=(sessionStorage.getItem(KEY_STORE)||'').trim();
+  if(!PROXY_URL){ reportErr='No proxy configured (PROXY_URL is empty).'; return; }
+  if(!key){ reportErr='No API key set on this device. Enter the access code in settings.'; return; }
   apiPending=true;
   /* Decided here, not after the response, because the model needs to know which
      cards already have a fixed service response so it does not restate them. */
@@ -2904,9 +2907,9 @@ async function requestReport(){
     +'\n\n'+helpSourceText(helpGroupsSel)
     +'\n\nWrite the Vantage summary JSON now.';
   try{
-    const res=await fetch('https://api.anthropic.com/v1/messages',{
+    const res=await fetch(PROXY_URL.replace(/\/$/,'')+'/v1/messages',{
       method:'POST',
-      headers:{'x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true','content-type':'application/json'},
+      headers:{'x-access-code':key,'content-type':'application/json'},
       body:JSON.stringify({model:MODEL,max_tokens:3500,system:sectorPrompt(),messages:[{role:'user',content:msg}]})
     });
     if(!res.ok) throw new Error('API '+res.status+': '+(await res.text()).slice(0,240));
@@ -3143,8 +3146,8 @@ function renderReport(r){
 function renderError(err){
   const msg=esc(String(err));
   let hint='Check the network connection and tap Regenerate.';
-  if(/401|403|invalid|authentication/i.test(msg)) hint='The API key on this device looks invalid. Tap the gear icon to update it.';
-  if(/Failed to fetch|NetworkError|TypeError|No API key/i.test(msg)) hint='No connection, or no key set on this device. Tap Regenerate once you are back online. The sort has already been saved.';
+  if(/401|403|invalid|authentication/i.test(msg)) hint='The access code looks invalid or has expired. Tap the gear icon to update it.';
+  if(/Failed to fetch|NetworkError|TypeError|No API key/i.test(msg)) hint='No connection, or no access code set for this session. Tap Regenerate once you are back online. The sort has already been saved.';
   $('repBody').innerHTML='<div class="err-box"><strong>We could not generate the summary just now.</strong><br><br>'+hint
     +'<br><br><span style="font-size:.8em;opacity:.7">'+msg+'</span></div>';
   $('pdfBtn').style.display='none';
@@ -3199,7 +3202,7 @@ $('restartBtn').addEventListener('click',e=>{
   resetAll(); bumpIdle();
 });
 $('fsBtn').addEventListener('click',()=>{ document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen().catch(()=>{}); });
-$('gearBtn').addEventListener('click',()=>{ $('apiKey').value=localStorage.getItem(KEY_STORE)||'';
+$('gearBtn').addEventListener('click',()=>{ $('apiKey').value=sessionStorage.getItem(KEY_STORE)||'';
   $('orientSel').value=cfg.orient||'auto'; $('deckSel').value=cfg.deck||'full'; $('sectorSel').value=cfg.sector||'edu';
   const shortOpt=$('deckSel').querySelector('option[value="short"]');
   if(shortOpt) shortOpt.textContent='Short deck ('+effShortDeck().length+' cards)';
@@ -3220,7 +3223,7 @@ $('orientSel').addEventListener('change',e=>{
   cfg.orient=e.target.value; saveCfg();
   if(applyOrient() && $('sort').classList.contains('active')){ renderPiles(); renderDeckFan(); }
 });
-$('setClose').addEventListener('click',()=>{ localStorage.setItem(KEY_STORE,$('apiKey').value.trim()); saveCfg(); $('setModal').classList.remove('open'); });
+$('setClose').addEventListener('click',()=>{ sessionStorage.setItem(KEY_STORE,$('apiKey').value.trim()); saveCfg(); $('setModal').classList.remove('open'); });
 
 /* ---------------- wake lock ---------------- */
 let _wl=null;
